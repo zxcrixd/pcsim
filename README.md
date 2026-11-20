@@ -1,33 +1,34 @@
-# PC Creator Simulator
+# PC Creator Simulator 3D
 
-Мини-симулятор сборщика ПК на Kotlin Multiplatform + Compose Multiplatform.
-Один и тот же код собирается в **Android APK**, **Windows EXE** и **Linux binary**.
+3D-версия симулятора сборки ПК на **Godot 4.3**. Сцена мастерской и комплектующие создаются процедурно из 3D-мешей; внешние модели не нужны.
 
 ## Геймплей
 
-- Выбираешь комплектующие по 7 категориям (CPU, плата, ОЗУ, GPU, накопитель, БП, корпус).
-- Игра проверяет совместимость: сокет CPU ↔ плата, тип памяти ↔ плата, мощность БП ≥ потребления.
-- Собираешь ПК → продаёшь его под заказ дня, получаешь прибыль и репутацию.
-- Репутация открывает дорогие детали (RTX 4090, DDR5, i9) и поднимает бонусы за заказы.
+1. Нажимай на комплектующие справа, чтобы выбрать деталь (повторное нажатие переключает вариант).
+2. Собери совместимую систему: сокет CPU и платы, DDR-память и мощность БП проверяются.
+3. Нажми **Собрать ПК**, затем **Продать ПК**. Выполняй заказы, зарабатывай деньги и репутацию, открывай более мощные детали.
+4. Вращай сборку мышью или касанием; колесо мыши меняет масштаб.
 
-## Сборка
+Есть 3D-мастерская, открытый корпус, видимые детали, подсветка, вращающиеся GPU-вентиляторы, заказы, экономика и рестарт.
 
-`setup-gradle` ставит Gradle 8.9; локально можно использовать свой Gradle 8.9+.
+## Запуск локально
 
-```bash
-gradle :composeApp:run                 # запуск desktop-версии
-gradle :composeApp:assembleDebug       # APK -> composeApp/build/outputs/apk/debug/
-gradle :composeApp:createDistributable # EXE (Windows) / binary (Linux) в build/compose/binaries/main/app/
-gradle :composeApp:packageMsi          # MSI-инсталлятор (Windows, нужен WiX)
-gradle :composeApp:packageDeb          # DEB-пакет (Linux)
-```
+Открой корень проекта в Godot 4.3 и запусти `Main.tscn` (или нажми F6/F5).
 
-## CI
+## CI-сборка
 
-`.github/workflows/build.yml` — три параллельные джобы (`assembleDebug`, `createDistributable` на Windows и Linux).
-Артефакты: `pcsim-android-apk`, `pcsim-windows-exe`, `pcsim-linux-binary`.
-Пуш тега `v1.0.0` дополнительно создаёт GitHub Release со всеми тремя файлами.
+`.github/workflows/build.yml` экспортирует три артефакта:
 
-## Стек
+- `pcsim3d-linux` — Linux x86_64 binary
+- `pcsim3d-windows` — Windows `.exe`
+- `pcsim3d-android` — Android debug APK (arm64)
 
-Kotlin 2.0.21 · Compose Multiplatform 1.7.1 · AGP 8.5.2 · Gradle 8.9 · JDK 17
+Workflow запускается на push в `main`, pull request и вручную через **Actions → Godot 3D builds → Run workflow**. Тег вида `v1.0.0` дополнительно создаёт GitHub Release с файлами сборки.
+
+Экспортные профили находятся в `export_presets.cfg`. Android APK подписывается временным debug-keystore внутри CI — для публикации в Google Play потребуется собственный release keystore.
+
+## Технологии
+
+Godot 4.3 · GDScript · процедурная 3D-сцена · GitHub Actions
+
+> В репозитории также сохранена предыдущая Kotlin/Compose-реализация в `composeApp/`; актуальная игра и workflow теперь Godot 3D.
