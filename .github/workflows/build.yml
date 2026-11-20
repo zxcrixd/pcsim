@@ -10,6 +10,9 @@ on:
 permissions:
   contents: write
 
+env:
+  GODOT_VERSION: 4.3
+
 jobs:
   export:
     name: Export APK, EXE and Linux binary
@@ -19,12 +22,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare export environment
+        shell: bash
         run: |
-          mkdir -p build/linux build/windows build/android /root/.android
+          mkdir -p build/linux build/windows build/android /root/.android /root/.config/godot
           keytool -genkeypair -keystore /root/.android/debug.keystore \
             -storepass android -keypass android -alias androiddebugkey \
             -dname "CN=Android Debug,O=Android,C=US" -validity 10000 \
             -keyalg RSA -keysize 2048 -storetype JKS
+          cat > /root/.config/godot/editor_settings-4.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "${ANDROID_HOME}"
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          EOF
       - name: Import project resources
         run: godot --headless --editor --path . --quit
       - name: Export Linux binary
