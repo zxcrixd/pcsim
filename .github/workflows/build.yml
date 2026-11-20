@@ -22,24 +22,35 @@ jobs:
       image: barichello/godot-ci:4.3
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Godot templates and Android tools
+      - name: Setup Godot templates and Android settings
+        shell: bash
         run: |
-          mkdir -p ~/.local/share/godot/export_templates ~/.config
-          mv /root/.config/godot ~/.config/godot
-          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
-          mkdir -p build/linux build/windows build/android /root/.android
-          keytool -genkeypair -keystore /root/.android/debug.keystore \
-            -storepass android -keypass android -alias androiddebugkey \
-            -dname "CN=Android Debug,O=Android,C=US" -validity 10000 \
-            -keyalg RSA -keysize 2048 -storetype JKS || true
-      - name: Import project resources
+          mkdir -p "$HOME/.local/share/godot/export_templates" "$HOME/.config/godot"
+          cp -a /root/.config/godot/. "$HOME/.config/godot/"
+          cp -a /root/.local/share/godot/export_templates/4.3.stable "$HOME/.local/share/godot/export_templates/"
+          mkdir -p build/linux build/windows build/android
+          cat > "$HOME/.config/godot/editor_settings-4.3.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
+          export/android/android_sdk_path = "/usr/lib/android-sdk"
+          export/android/debug_keystore = "/root/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          export/android/force_system_user = false
+          EOF
+          test -x /usr/local/bin/godot
+          test -f /root/debug.keystore
+          test -d /usr/lib/android-sdk/build-tools/33.0.2
+      - name: Import and validate project
         run: godot --headless --verbose --editor --path . --quit
       - name: Export Linux binary
-        run: godot --headless --verbose --path . --export-release "Linux" build/linux/${EXPORT_NAME}.x86_64
+        run: godot --headless --verbose --path . --export-release "Linux" "build/linux/${EXPORT_NAME}.x86_64"
       - name: Export Windows executable
-        run: godot --headless --verbose --path . --export-release "Windows" build/windows/${EXPORT_NAME}.exe
+        run: godot --headless --verbose --path . --export-release "Windows" "build/windows/${EXPORT_NAME}.exe"
       - name: Export Android APK
-        run: godot --headless --verbose --path . --export-debug "Android" build/android/${EXPORT_NAME}.apk
+        run: godot --headless --verbose --path . --export-debug "Android" "build/android/${EXPORT_NAME}.apk"
       - uses: actions/upload-artifact@v4
         with:
           name: pcsim3d-linux
