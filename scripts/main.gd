@@ -113,7 +113,6 @@ func _make_world() -> void:
     model_root = Node3D.new()
     model_root.position = Vector3(0.45, 0.8, 0)
     add_child(model_root)
-    # Open-frame PC tower: the selected components are visible in 3D.
     _box(model_root, Vector3(1.08, 1.75, 0.08), Vector3(0, 0.88, -0.5), Color(0.13, 0.16, 0.23))
     _box(model_root, Vector3(1.08, 0.08, 1.0), Vector3(0, 0.04, 0), Color(0.1, 0.12, 0.18))
     _box(model_root, Vector3(0.08, 1.75, 1.0), Vector3(-0.5, 0.88, 0), Color(0.12, 0.14, 0.2))
@@ -135,6 +134,7 @@ func _make_world() -> void:
     camera = Camera3D.new()
     camera.position = Vector3(0, 0.45, zoom)
     camera.fov = 52
+    camera.current = true
     pivot.add_child(camera)
     camera.look_at(Vector3(0, 1.0, 0))
 
@@ -191,7 +191,6 @@ func _make_ui() -> void:
     var root := Control.new()
     root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     layer.add_child(root)
-
     var hud := PanelContainer.new()
     hud.position = Vector2(16,14)
     hud.custom_minimum_size = Vector2(330,0)
@@ -209,7 +208,6 @@ func _make_ui() -> void:
     order_label = Label.new()
     order_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     hud_box.add_child(order_label)
-
     var panel := PanelContainer.new()
     panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
     panel.position = Vector2(-370,14)
@@ -227,7 +225,6 @@ func _make_ui() -> void:
         button.pressed.connect(_cycle_part.bind(slot))
         list.add_child(button)
         buttons[slot] = button
-
     status_label = Label.new()
     status_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
     status_label.position = Vector2(-310,-112)
@@ -240,7 +237,6 @@ func _make_ui() -> void:
     score_label.custom_minimum_size = Vector2(520,30)
     score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     root.add_child(score_label)
-
     var assemble := Button.new()
     assemble.text = "СОБРАТЬ ПК"
     assemble.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
@@ -345,7 +341,7 @@ func _sell() -> void:
         _message("Сначала собери совместимый ПК", true)
         return
     var order: Dictionary = orders[order_index%orders.size()]
-    var revenue := int(float(built_cost)*1.35) + built_score/2 + int(order["bonus"])
+    var revenue := int(float(built_cost)*1.35) + int(built_score / 2) + int(order["bonus"])
     money += revenue - RENT
     profit += revenue - built_cost - RENT
     reputation += 2
