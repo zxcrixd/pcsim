@@ -43,36 +43,37 @@ class GameState {
 
     val installed = mutableStateMapOf<PartType, Part>()
 
-    fun place(part: Part, target: PartType) {
+    fun place(part: Part, target: PartType): Boolean {
         if (part.type != target) {
             note("${part.type.label} сюда не устанавливается — найди подходящий слот", true)
-            return
+            return false
         }
-        install(part)
+        return install(part)
     }
 
-    fun install(part: Part) {
+    fun install(part: Part): Boolean {
         if (readyPc != null) {
             note("Сначала продай или разбери собранный ПК", true)
-            return
+            return false
         }
         if (part.requiredReputation > reputation) {
             note("Эта деталь откроется при репутации ${part.requiredReputation}", true)
-            return
+            return false
         }
         val old = installed[part.type]
         if (old?.id == part.id) {
             note("${part.name} уже установлена")
-            return
+            return false
         }
         val charge = part.price - (old?.price ?: 0)
         if (charge > money) {
             note("Не хватает денег: нужно ещё $charge ₽", true)
-            return
+            return false
         }
         money -= charge
         installed[part.type] = part
         note(if (old == null) "Установлена ${part.name}" else "${old.name} заменена на ${part.name}")
+        return true
     }
 
     fun remove(type: PartType) {
