@@ -11,6 +11,15 @@ import com.zxcrixd.pcsim.model.PartType
 private const val START_MONEY = 1200
 private const val DAILY_RENT = 30
 
+private val BUILD_SLOTS = listOf(
+    PartType.CPU,
+    PartType.MOTHERBOARD,
+    PartType.RAM,
+    PartType.GPU,
+    PartType.STORAGE,
+    PartType.PSU
+)
+
 data class BuildCheck(
     val complete: Boolean,
     val totalCost: Int,
@@ -91,7 +100,7 @@ class GameState {
 
     fun check(): BuildCheck {
         val errors = mutableListOf<String>()
-        val missing = PartType.entries.filter { installed[it] == null }
+        val missing = BUILD_SLOTS.filter { installed[it] == null }
         if (missing.isNotEmpty()) {
             errors += "Не установлено: " + missing.joinToString(", ") { it.label }
         }
@@ -125,10 +134,6 @@ class GameState {
         val issue = result.errors.firstOrNull()
         if (issue != null) {
             note(issue, true)
-            return
-        }
-        if (money < 0) {
-            note("Баланс ушёл в минус", true)
             return
         }
         readyPc = ReadyPc(result.score, result.totalCost)
