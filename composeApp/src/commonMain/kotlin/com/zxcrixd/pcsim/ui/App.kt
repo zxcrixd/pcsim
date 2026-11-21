@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -65,13 +66,21 @@ fun App() {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Header(game, page) { game.reset(); selectedPart = null; page = Page.HOME }
-                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(Modifier.weight(1f).fillMaxSize()) {
                         when (page) {
                             Page.HOME -> HomePage(game) { page = it }
                             Page.TASKS -> TasksPage(game) { task -> game.acceptTask(task); page = Page.BUILD }
                             Page.BUILD -> BuildPage(game, selectedPart) { selectedPart = null }
-                            Page.SHOP -> ShopPage(game, selectedPart) { selectedPart = it; page = Page.BUILD }
+                            Page.SHOP -> ShopPage(game, selectedPart) { part ->
+                                if (part.type == PartType.CASE) {
+                                    game.install(part)
+                                    selectedPart = null
+                                } else {
+                                    selectedPart = part
+                                    page = Page.BUILD
+                                }
+                            }
                         }
                     }
                     Navigation(page) { page = it }
@@ -93,7 +102,14 @@ private fun Header(game: GameState, page: Page, onReset: () -> Unit) {
         }
         Column(horizontalAlignment = Alignment.End) {
             Text("${game.money} ₽", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("Ур. ${game.sellerLevel}  ·  ★ ${game.rating.toString().take(3)}  ·  ${game.sellerXp % 100}/100 XP", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            Text("Уровень ${game.sellerLevel}  ·  ★ ${game.rating.toString().take(3)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            LinearProgressIndicator(
+                progress = (game.sellerXp % 100) / 100f,
+                modifier = Modifier.width(150.dp).height(5.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = Color(0xFF4A4035)
+            )
+            Text("${game.sellerXp % 100}/100 XP", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         TextButton(onClick = onReset) { Text("Новая игра") }
     }
@@ -148,14 +164,15 @@ private fun HomePage(game: GameState, onNavigate: (Page) -> Unit) {
 @Composable
 private fun WorkshopIllustration(modifier: Modifier = Modifier) {
     androidx.compose.foundation.Canvas(modifier) {
-        val w = size.width; val h = size.height
-        drawRoundRect(Color(0xFF6B4A31), androidx.compose.ui.geometry.Offset(w*.06f,h*.72f), androidx.compose.ui.geometry.Size(w*.88f,h*.12f), androidx.compose.ui.geometry.CornerRadius(16f))
-        drawRoundRect(Color(0xFF242A2A), androidx.compose.ui.geometry.Offset(w*.24f,h*.12f), androidx.compose.ui.geometry.Size(w*.5f,h*.62f), androidx.compose.ui.geometry.CornerRadius(20f))
-        drawRoundRect(Color(0xFF315344), androidx.compose.ui.geometry.Offset(w*.29f,h*.18f), androidx.compose.ui.geometry.Size(w*.4f,h*.5f), androidx.compose.ui.geometry.CornerRadius(12f))
-        drawRoundRect(Color(0xFFB18A5A), androidx.compose.ui.geometry.Offset(w*.40f,h*.28f), androidx.compose.ui.geometry.Size(w*.16f,h*.14f), androidx.compose.ui.geometry.CornerRadius(8f))
-        drawRoundRect(Color(0xFF9A5360), androidx.compose.ui.geometry.Offset(w*.59f,h*.25f), androidx.compose.ui.geometry.Size(w*.06f,h*.26f), androidx.compose.ui.geometry.CornerRadius(5f))
-        drawRoundRect(Color(0xFF76776A), androidx.compose.ui.geometry.Offset(w*.38f,h*.51f), androidx.compose.ui.geometry.Size(w*.29f,h*.08f), androidx.compose.ui.geometry.CornerRadius(5f))
-        drawCircle(Color(0xFFC8874A), h*.055f, androidx.compose.ui.geometry.Offset(w*.51f,h*.55f))
+        val w = size.width
+        val h = size.height
+        drawRoundRect(Color(0xFF6B4A31), androidx.compose.ui.geometry.Offset(w * .06f, h * .72f), androidx.compose.ui.geometry.Size(w * .88f, h * .12f), androidx.compose.ui.geometry.CornerRadius(16f))
+        drawRoundRect(Color(0xFF242A2A), androidx.compose.ui.geometry.Offset(w * .24f, h * .12f), androidx.compose.ui.geometry.Size(w * .5f, h * .62f), androidx.compose.ui.geometry.CornerRadius(20f))
+        drawRoundRect(Color(0xFF315344), androidx.compose.ui.geometry.Offset(w * .29f, h * .18f), androidx.compose.ui.geometry.Size(w * .4f, h * .5f), androidx.compose.ui.geometry.CornerRadius(12f))
+        drawRoundRect(Color(0xFFB18A5A), androidx.compose.ui.geometry.Offset(w * .40f, h * .28f), androidx.compose.ui.geometry.Size(w * .16f, h * .14f), androidx.compose.ui.geometry.CornerRadius(8f))
+        drawRoundRect(Color(0xFF9A5360), androidx.compose.ui.geometry.Offset(w * .59f, h * .25f), androidx.compose.ui.geometry.Size(w * .06f, h * .26f), androidx.compose.ui.geometry.CornerRadius(5f))
+        drawRoundRect(Color(0xFF76776A), androidx.compose.ui.geometry.Offset(w * .38f, h * .51f), androidx.compose.ui.geometry.Size(w * .29f, h * .08f), androidx.compose.ui.geometry.CornerRadius(5f))
+        drawCircle(Color(0xFFC8874A), h * .055f, androidx.compose.ui.geometry.Offset(w * .51f, h * .55f))
     }
 }
 
