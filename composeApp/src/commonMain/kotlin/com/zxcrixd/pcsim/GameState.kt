@@ -32,7 +32,7 @@ class GameState {
         private set
     var totalProfit by mutableStateOf(0)
         private set
-    var message by mutableStateOf("Перетащи детали из магазина в корпус")
+    var message by mutableStateOf("Выбери деталь в магазине, затем установи её в корпус")
         private set
     var messageError by mutableStateOf(false)
         private set
@@ -42,6 +42,14 @@ class GameState {
         private set
 
     val installed = mutableStateMapOf<PartType, Part>()
+
+    fun place(part: Part, target: PartType) {
+        if (part.type != target) {
+            note("${part.type.label} сюда не устанавливается — найди подходящий слот", true)
+            return
+        }
+        install(part)
+    }
 
     fun install(part: Part) {
         if (readyPc != null) {
@@ -78,6 +86,8 @@ class GameState {
         note("${part.name} снята · возврат $refund ₽")
     }
 
+    fun hint(text: String) = note(text)
+
     fun check(): BuildCheck {
         val errors = mutableListOf<String>()
         val missing = PartType.entries.filter { installed[it] == null }
@@ -107,7 +117,7 @@ class GameState {
 
     fun assemble() {
         if (readyPc != null) {
-            note("ПК уже собран — проверь его или разбери", true)
+            note("ПК уже собран — продай его или разбери", true)
             return
         }
         val result = check()
