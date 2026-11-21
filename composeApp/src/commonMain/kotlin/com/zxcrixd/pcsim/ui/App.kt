@@ -68,20 +68,17 @@ private fun WorkshopGame(game: GameState) {
     var selectedPart by remember { mutableStateOf<Part?>(null) }
     var filter by remember { mutableStateOf<PartType?>(null) }
     LaunchedEffect(game.message) {
-        if (game.message.startsWith("Установлена ") || " заменена на " in game.message) {
-            selectedPart = null
-        }
+        if (game.message.startsWith("Установлена ") || " заменена на " in game.message) selectedPart = null
     }
     val check = game.check()
     val parts = if (filter == null) Catalog.parts else Catalog.byType(filter!!)
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Hud(game)
+        OrderBrief(game, check)
         WorkshopScene(
             game = game,
             selectedPart = selectedPart,
@@ -104,7 +101,7 @@ private fun WorkshopGame(game: GameState) {
                             selectedPart = null
                         } else if (part.requiredReputation <= game.reputation) {
                             selectedPart = if (selectedPart?.id == part.id) null else part
-                            game.hint("Выбрано: ${part.name}. Нажми на подходящий слот в корпусе")
+                            game.hint("Выбрано: ${part.name}. Нажми на соответствующий слот в корпусе")
                         }
                     }
                 )
@@ -126,6 +123,32 @@ private fun Hud(game: GameState) {
             Text("прибыль ${game.totalProfit} ₽", style = MaterialTheme.typography.labelSmall)
         }
         TextButton(onClick = { game.reset() }) { Text("⟲") }
+    }
+}
+
+@Composable
+private fun OrderBrief(game: GameState, check: BuildCheck) {
+    val order = game.order
+    val remaining = (order.minScore - check.score).coerceAtLeast(0)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("ЗАКАЗ · ${order.title}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    if (remaining == 0) "Требование выполнено · осталось только собрать!"
+                    else "Нужно ещё $remaining очк · бонус ${order.bonus} ₽",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (remaining == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text("${check.score}/${order.minScore}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+        }
     }
 }
 
