@@ -24,8 +24,9 @@ import com.zxcrixd.pcsim.GameState
 import com.zxcrixd.pcsim.model.Part
 import com.zxcrixd.pcsim.model.PartType
 
-private val Neon = Color(0xFF54E6D0)
-private val BoardGreen = Color(0xFF164B3B)
+private val Copper = Color(0xFFD29455)
+private val BoardGreen = Color(0xFF244A35)
+private val TraceGreen = Color(0xFF789064)
 
 private fun slotRects(size: Size): Map<PartType, Rect> {
     val left = size.width * 0.29f
@@ -57,17 +58,9 @@ fun WorkshopScene(game: GameState, selectedPart: Part?, modifier: Modifier = Mod
         modifier = modifier.pointerInput(selectedPart, installed) {
             detectTapGestures { point ->
                 val slots = slotRects(Size(size.width.toFloat(), size.height.toFloat()))
-                val componentOrder = listOf(
-                    PartType.CPU,
-                    PartType.RAM,
-                    PartType.GPU,
-                    PartType.STORAGE,
-                    PartType.PSU
-                )
+                val componentOrder = listOf(PartType.CPU, PartType.RAM, PartType.GPU, PartType.STORAGE, PartType.PSU)
                 val componentSlot = componentOrder.firstOrNull { slots.getValue(it).contains(point) }
-                val target = componentSlot ?: if (slots.getValue(PartType.MOTHERBOARD).contains(point)) {
-                    PartType.MOTHERBOARD
-                } else null
+                val target = componentSlot ?: if (slots.getValue(PartType.MOTHERBOARD).contains(point)) PartType.MOTHERBOARD else null
                 when {
                     target == null -> game.hint("Нажми на слот внутри корпуса")
                     selectedPart != null -> game.place(selectedPart, target)
@@ -80,87 +73,96 @@ fun WorkshopScene(game: GameState, selectedPart: Part?, modifier: Modifier = Mod
         Canvas(Modifier.fillMaxSize()) {
             val width = size.width
             val height = size.height
-            drawRect(Brush.verticalGradient(listOf(Color(0xFF111827), Color(0xFF202C40))))
+            drawRect(Brush.verticalGradient(listOf(Color(0xFF302B24), Color(0xFF1B1A18), Color(0xFF24221E))))
             for (i in 0..12) {
                 val x = width * i / 12f
-                drawLine(Color(0x1839D9C5), Offset(x, 0f), Offset(x, height), 1f)
+                drawLine(Color(0x12D6B98B), Offset(x, 0f), Offset(x, height), 1f)
             }
             for (i in 0..7) {
                 val y = height * i / 7f
-                drawLine(Color(0x1839D9C5), Offset(0f, y), Offset(width, y), 1f)
+                drawLine(Color(0x12D6B98B), Offset(0f, y), Offset(width, y), 1f)
             }
 
-            drawRoundRect(Color(0xFF604332), Offset(width * 0.08f, height * 0.83f), Size(width * 0.84f, height * 0.09f), CornerRadius(12f))
-            drawRoundRect(Color(0xFF29364A), Offset(width * 0.055f, height * 0.22f), Size(width * 0.18f, height * 0.34f), CornerRadius(12f))
-            drawRoundRect(Color(0xFF10283C), Offset(width * 0.07f, height * 0.24f), Size(width * 0.15f, height * 0.29f), CornerRadius(8f))
-            drawRoundRect(Neon.copy(alpha = 0.23f), Offset(width * 0.07f, height * 0.24f), Size(width * 0.15f, height * 0.29f), CornerRadius(8f), style = Stroke(2f))
-            drawText(textMeasurer, "POST", Offset(width * 0.105f, height * 0.31f), style = TextStyle(color = Neon, fontSize = 14.sp, fontWeight = FontWeight.Bold))
-            drawText(textMeasurer, "READY", Offset(width * 0.097f, height * 0.39f), style = TextStyle(color = Color(0xFF8BA2BE), fontSize = 11.sp))
+            // Warm wood workbench, monitor bezel and a subdued diagnostics screen.
+            drawRoundRect(Color(0xFF795638), Offset(width * 0.08f, height * 0.83f), Size(width * 0.84f, height * 0.09f), CornerRadius(12f))
+            drawRoundRect(Color(0xFF242321), Offset(width * 0.055f, height * 0.22f), Size(width * 0.18f, height * 0.34f), CornerRadius(12f))
+            drawRoundRect(Color(0xFF29362D), Offset(width * 0.07f, height * 0.24f), Size(width * 0.15f, height * 0.29f), CornerRadius(8f))
+            drawRoundRect(Color(0xFF667258), Offset(width * 0.07f, height * 0.24f), Size(width * 0.15f, height * 0.29f), CornerRadius(8f), style = Stroke(2f))
+            drawText(textMeasurer, "POST", Offset(width * 0.105f, height * 0.31f), style = TextStyle(color = Color(0xFFD8B578), fontSize = 14.sp, fontWeight = FontWeight.Bold))
+            drawText(textMeasurer, "READY", Offset(width * 0.097f, height * 0.39f), style = TextStyle(color = Color(0xFFC2B9A7), fontSize = 11.sp))
 
             val slots = slotRects(size)
             val caseRect = slots.getValue(PartType.CASE)
             val casePart = installed[PartType.CASE]
-            val caseTint = if (casePart == null) Color(0xFF111722) else partColor(PartType.CASE, casePart.score).copy(alpha = 0.9f)
+            val caseTint = if (casePart == null) Color(0xFF282A29) else partColor(PartType.CASE, casePart.score)
             drawRoundRect(caseTint, caseRect.topLeft, caseRect.size, CornerRadius(18f))
-            drawRoundRect(Color(0xFF202A38), caseRect.topLeft, caseRect.size, CornerRadius(18f), style = Stroke(5f))
+            drawRoundRect(Color(0xFF77756C), caseRect.topLeft, caseRect.size, CornerRadius(18f), style = Stroke(5f))
+
             val board = slots.getValue(PartType.MOTHERBOARD)
-            val boardColor = if (installed.containsKey(PartType.MOTHERBOARD)) BoardGreen else Color(0xFF17252C)
+            val boardColor = if (installed.containsKey(PartType.MOTHERBOARD)) BoardGreen else Color(0xFF30382F)
             drawRoundRect(boardColor, board.topLeft, board.size, CornerRadius(12f))
-            drawRoundRect(Color(0xFF33866B), board.topLeft, board.size, CornerRadius(12f), style = Stroke(2f))
+            drawRoundRect(Color(0xFF7B795D), board.topLeft, board.size, CornerRadius(12f), style = Stroke(2f))
             repeat(5) { index ->
                 val y = board.top + board.height * (0.18f + index * 0.13f)
-                drawLine(Color(0x6649C99A), Offset(board.left + 8f, y), Offset(board.right - 8f, y), 1f)
+                drawLine(TraceGreen.copy(alpha = 0.55f), Offset(board.left + 8f, y), Offset(board.right - 8f, y), 1f)
             }
             if (casePart != null) {
-                drawText(textMeasurer, casePart.name, Offset(caseRect.left + 5f, caseRect.bottom - 19f), style = TextStyle(color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold))
+                drawText(textMeasurer, casePart.name, Offset(caseRect.left + 5f, caseRect.bottom - 19f), style = TextStyle(color = Color(0xFFF2E7D2), fontSize = 9.sp, fontWeight = FontWeight.Bold))
             }
 
             val displayOrder = listOf(PartType.CPU, PartType.RAM, PartType.GPU, PartType.STORAGE, PartType.PSU)
             for (type in displayOrder) {
                 val rect = slots.getValue(type)
                 val part = installed[type]
+                val highlighted = selectedPart?.type == type
                 if (part == null) {
-                    drawRoundRect(Color(0x2226D9C5), rect.topLeft, rect.size, CornerRadius(7f))
-                    drawRoundRect(Neon.copy(alpha = 0.65f), rect.topLeft, rect.size, CornerRadius(7f), style = Stroke(2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f, 5f))))
-                    drawText(textMeasurer, type.label.uppercase(), Offset(rect.left + 4f, rect.top + 4f), style = TextStyle(color = Color(0xFFB7C8D8), fontSize = 9.sp, fontWeight = FontWeight.Bold))
+                    drawRoundRect(Color(0x33262520), rect.topLeft, rect.size, CornerRadius(7f))
+                    drawRoundRect(
+                        if (highlighted) Copper else Color(0xFF8A806C),
+                        rect.topLeft,
+                        rect.size,
+                        CornerRadius(7f),
+                        style = Stroke(if (highlighted) 3f else 1.5f, pathEffect = if (highlighted) null else PathEffect.dashPathEffect(floatArrayOf(7f, 5f)))
+                    )
+                    drawText(textMeasurer, type.label.uppercase(), Offset(rect.left + 4f, rect.top + 4f), style = TextStyle(color = Color(0xFFE0D5C0), fontSize = 9.sp, fontWeight = FontWeight.Bold))
                 } else {
                     val color = partColor(type, part.score)
                     drawRoundRect(color, rect.topLeft, rect.size, CornerRadius(7f))
-                    drawRoundRect(Color.White.copy(alpha = 0.75f), rect.topLeft, rect.size, CornerRadius(7f), style = Stroke(1.5f))
-                    drawText(textMeasurer, part.name, Offset(rect.left + 5f, rect.top + rect.height * 0.38f), style = TextStyle(color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold))
+                    drawRoundRect(Color(0xFFE5D7BF), rect.topLeft, rect.size, CornerRadius(7f), style = Stroke(1.5f))
+                    drawText(textMeasurer, part.name, Offset(rect.left + 5f, rect.top + rect.height * 0.38f), style = TextStyle(color = Color(0xFFFFF7EA), fontSize = 9.sp, fontWeight = FontWeight.Bold))
                     when (type) {
                         PartType.GPU -> {
-                            drawCircle(Color(0xFF172033), rect.height * 0.32f, Offset(rect.left + rect.width * 0.32f, rect.center.y))
-                            drawCircle(Color(0xFF172033), rect.height * 0.32f, Offset(rect.left + rect.width * 0.68f, rect.center.y))
-                            drawCircle(Neon, rect.height * 0.08f, Offset(rect.left + rect.width * 0.32f, rect.center.y))
-                            drawCircle(Neon, rect.height * 0.08f, Offset(rect.left + rect.width * 0.68f, rect.center.y))
+                            drawCircle(Color(0xFF242321), rect.height * 0.32f, Offset(rect.left + rect.width * 0.32f, rect.center.y))
+                            drawCircle(Color(0xFF242321), rect.height * 0.32f, Offset(rect.left + rect.width * 0.68f, rect.center.y))
+                            drawCircle(Copper, rect.height * 0.07f, Offset(rect.left + rect.width * 0.32f, rect.center.y))
+                            drawCircle(Copper, rect.height * 0.07f, Offset(rect.left + rect.width * 0.68f, rect.center.y))
                         }
-                        PartType.PSU -> drawCircle(Color(0xFF19202C), rect.height * 0.28f, Offset(rect.right - rect.width * 0.22f, rect.center.y))
-                        PartType.CPU -> drawRect(Color(0x66FFFFFF), Offset(rect.left + rect.width * 0.2f, rect.top + 3f), Size(rect.width * 0.6f, 2f))
+                        PartType.PSU -> drawCircle(Color(0xFF242321), rect.height * 0.28f, Offset(rect.right - rect.width * 0.22f, rect.center.y))
+                        PartType.CPU -> drawRect(Color(0x66FFF1D1), Offset(rect.left + rect.width * 0.2f, rect.top + 3f), Size(rect.width * 0.6f, 2f))
                         else -> Unit
                     }
                 }
             }
-            drawLine(Color(0x559DEBFF), Offset(caseRect.left + 4f, caseRect.top + 8f), Offset(caseRect.left + 4f, caseRect.bottom - 8f), 3f)
-            drawLine(Neon, Offset(caseRect.left, caseRect.bottom - 4f), Offset(caseRect.right, caseRect.bottom - 4f), 4f)
+            drawLine(Color(0xFF9A8A70), Offset(caseRect.left + 4f, caseRect.top + 8f), Offset(caseRect.left + 4f, caseRect.bottom - 8f), 3f)
+            drawLine(Copper, Offset(caseRect.left, caseRect.bottom - 4f), Offset(caseRect.right, caseRect.bottom - 4f), 4f)
         }
     }
 }
 
 private fun partColor(type: PartType, score: Int): Color {
     val base = when (type) {
-        PartType.CPU -> Color(0xFF3978E8)
-        PartType.MOTHERBOARD -> Color(0xFF248C62)
-        PartType.RAM -> Color(0xFFE44D78)
-        PartType.GPU -> Color(0xFF874EE8)
-        PartType.STORAGE -> Color(0xFF29A9A0)
-        PartType.PSU -> Color(0xFF65758B)
-        PartType.CASE -> Color(0xFF29364A)
+        PartType.CPU -> Color(0xFFB18A5A)
+        PartType.MOTHERBOARD -> Color(0xFF3E694B)
+        PartType.RAM -> Color(0xFF9A5360)
+        PartType.GPU -> Color(0xFF555650)
+        PartType.STORAGE -> Color(0xFF85847A)
+        PartType.PSU -> Color(0xFF41413E)
+        PartType.CASE -> Color(0xFF56534D)
     }
     return if (score > 130) Color(
-        red = (base.red + 0.18f).coerceAtMost(1f),
-        green = (base.green + 0.08f).coerceAtMost(1f),
-        blue = base.blue,
+        red = (base.red + 0.12f).coerceAtMost(1f),
+        green = (base.green + 0.07f).coerceAtMost(1f),
+        blue = (base.blue + 0.03f).coerceAtMost(1f),
         alpha = base.alpha
     ) else base
 }
