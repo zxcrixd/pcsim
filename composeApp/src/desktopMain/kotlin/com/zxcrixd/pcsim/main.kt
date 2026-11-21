@@ -11,6 +11,7 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "PC Creator Simulator",
+        undecorated = true,
         state = rememberWindowState(size = DpSize(1280.dp, 800.dp))
     ) {
         App()
