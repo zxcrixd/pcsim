@@ -3,6 +3,7 @@
 
     <application
         android:label="PC Creator Simulator"
+        android:theme="@style/Theme.PCSim"
         android:supportsRtl="true"
         android:resizeableActivity="true">
 
