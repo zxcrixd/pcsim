@@ -4,13 +4,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.zxcrixd.pcsim.model.Order
 import com.zxcrixd.pcsim.model.Orders
 import com.zxcrixd.pcsim.model.Part
 import com.zxcrixd.pcsim.model.PartType
 
-private const val START_MONEY = 1500
-private const val RENT = 40
+private const val START_MONEY = 1200
+private const val DAILY_RENT = 30
 
 data class BuildCheck(
     val complete: Boolean,
@@ -33,7 +32,7 @@ class GameState {
         private set
     var totalProfit by mutableStateOf(0)
         private set
-    var message by mutableStateOf("Собери первый ПК и продай его. Удачи!")
+    var message by mutableStateOf("Перетащи детали из магазина в корпус")
         private set
     var messageError by mutableStateOf(false)
         private set
@@ -42,99 +41,107 @@ class GameState {
     var readyPc by mutableStateOf<ReadyPc?>(null)
         private set
 
-    val selected = mutableStateMapOf<PartType, Part>()
+    val installed = mutableStateMapOf<PartType, Part>()
 
-    fun select(part: Part) {
+    fun install(part: Part) {
         if (readyPc != null) {
-            note("Сначала распродай собранный ПК", true)
+            note("Сначала продай или разбери собранный ПК", true)
             return
         }
-        if (reputation < part.requiredReputation) {
-            note("Нужна репутация ${part.requiredReputation} для ${part.name}", true)
+        if (part.requiredReputation > reputation) {
+            note("Эта деталь откроется при репутации ${part.requiredReputation}", true)
             return
         }
-        if (selected[part.type]?.id == part.id) {
-            selected.remove(part.type)
-        } else {
-            selected[part.type] = part
+        val old = installed[part.type]
+        if (old?.id == part.id) {
+            note("${part.name} уже установлена")
+            return
         }
+        val charge = part.price - (old?.price ?: 0)
+        if (charge > money) {
+            note("Не хватает денег: нужно ещё $charge ₽", true)
+            return
+        }
+        money -= charge
+        installed[part.type] = part
+        note(if (old == null) "Установлена ${part.name}" else "${old.name} заменена на ${part.name}")
+    }
+
+    fun remove(type: PartType) {
+        if (readyPc != null) {
+            note("Сначала разбери готовый ПК", true)
+            return
+        }
+        val part = installed.remove(type) ?: return
+        val refund = part.price * 3 / 4
+        money += refund
+        note("${part.name} снята · возврат $refund ₽")
     }
 
     fun check(): BuildCheck {
         val errors = mutableListOf<String>()
-        val missing = PartType.entries.filter { selected[it] == null }
+        val missing = PartType.entries.filter { installed[it] == null }
         if (missing.isNotEmpty()) {
-            errors += "Не выбрано: " + missing.joinToString(", ") { it.label }
+            errors += "Не установлено: " + missing.joinToString(", ") { it.label }
         }
 
-        val cpu = selected[PartType.CPU]
-        val mb = selected[PartType.MOTHERBOARD]
-        val ram = selected[PartType.RAM]
-        val psu = selected[PartType.PSU]
-
-        if (cpu != null && mb != null && cpu.socket != mb.socket) {
-            errors += "Сокет ${cpu.socket} не подходит к плате ${mb.socket}"
+        val cpu = installed[PartType.CPU]
+        val board = installed[PartType.MOTHERBOARD]
+        val ram = installed[PartType.RAM]
+        val psu = installed[PartType.PSU]
+        if (cpu != null && board != null && cpu.socket != board.socket) {
+            errors += "Сокет CPU не подходит к материнской плате"
         }
-        if (ram != null && mb != null && ram.ramType != mb.ramType) {
-            errors += "Память ${ram.ramType} не подходит к плате (${mb.ramType})"
+        if (ram != null && board != null && ram.ramType != board.ramType) {
+            errors += "Тип ОЗУ не подходит к материнской плате"
         }
 
-        val cost = selected.values.sumOf { it.price }
-        val power = selected.values.sumOf { it.power }
-
+        val cost = installed.values.sumOf { it.price }
+        val power = installed.values.sumOf { it.power }
+        val score = installed.values.sumOf { it.score }
         if (psu != null && psu.watt < power) {
-            errors += "Блок питания: ${psu.watt} Вт < нужно $power Вт"
+            errors += "БП выдаёт ${psu.watt} Вт, сборке нужно $power Вт"
         }
-        if (cost > money) {
-            errors += "Не хватает денег: нужно $cost ₽, есть $money ₽"
-        }
-
-        return BuildCheck(
-            complete = missing.isEmpty(),
-            totalCost = cost,
-            totalPower = power,
-            score = selected.values.sumOf { it.score },
-            errors = errors
-        )
+        return BuildCheck(missing.isEmpty(), cost, power, score, errors)
     }
 
     fun assemble() {
         if (readyPc != null) {
-            note("Сначала распродай собранный ПК", true)
+            note("ПК уже собран — проверь его или разбери", true)
             return
         }
-        val c = check()
-        val firstError = c.errors.firstOrNull()
-        if (firstError != null) {
-            note(firstError, true)
+        val result = check()
+        val issue = result.errors.firstOrNull()
+        if (issue != null) {
+            note(issue, true)
             return
         }
-
-        money -= c.totalCost
-        readyPc = ReadyPc(score = c.score, cost = c.totalCost)
-        selected.clear()
-        note("ПК собран за ${c.totalCost} ₽ · производительность ${c.score} очк.")
+        if (money < 0) {
+            note("Баланс ушёл в минус", true)
+            return
+        }
+        readyPc = ReadyPc(result.score, result.totalCost)
+        note("POST успешен! ${result.score} очков производительности")
     }
 
     fun sell() {
         val pc = readyPc ?: return
-        val orderBonus = order.bonus
-        val orderMin = order.minScore
-        val base = (pc.cost * 1.35).toInt() + pc.score / 2
-        val meets = pc.score >= orderMin
-        val price = if (meets) base + orderBonus else (base * 0.8).toInt()
-
-        money += price - RENT
-        totalProfit += price - pc.cost - RENT
-        reputation += if (meets) 2 else 1
+        val orderNow = order
+        val meetsOrder = pc.score >= orderNow.minScore
+        val basePrice = (pc.cost * 1.30).toInt() + pc.score / 2
+        val revenue = if (meetsOrder) basePrice + orderNow.bonus else (basePrice * 0.78).toInt()
+        val net = revenue - DAILY_RENT
+        money += net
+        totalProfit += net - pc.cost
+        reputation += if (meetsOrder) 2 else 1
         day += 1
         readyPc = null
+        installed.clear()
         order = Orders.forDay(day, reputation)
-
-        if (meets) {
-            note("Заказ выполнен! +$price ₽ (бонус $orderBonus ₽), аренда -$RENT ₽")
+        if (meetsOrder) {
+            note("Заказ выполнен! Продажа $revenue ₽ · аренда −$DAILY_RENT ₽")
         } else {
-            note("ПК ушёл дешевле: +$price ₽, аренда -$RENT ₽", true)
+            note("Продано без бонуса за $revenue ₽ · аренда −$DAILY_RENT ₽", true)
         }
     }
 
@@ -143,7 +150,8 @@ class GameState {
         val refund = pc.cost / 2
         money += refund
         readyPc = null
-        note("ПК разобран на запчасти, возврат $refund ₽", true)
+        installed.clear()
+        note("ПК разобран · возврат $refund ₽", true)
     }
 
     fun reset() {
@@ -152,9 +160,9 @@ class GameState {
         day = 1
         totalProfit = 0
         readyPc = null
-        selected.clear()
+        installed.clear()
         order = Orders.forDay(1, 0)
-        note("Новая игра начата")
+        note("Новая мастерская готова. Собери ПК!")
     }
 
     private fun note(text: String, isError: Boolean = false) {
