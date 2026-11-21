@@ -1,6 +1,5 @@
 package com.zxcrixd.pcsim.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +67,11 @@ fun App() {
 private fun WorkshopGame(game: GameState) {
     var selectedPart by remember { mutableStateOf<Part?>(null) }
     var filter by remember { mutableStateOf<PartType?>(null) }
+    LaunchedEffect(game.message) {
+        if (game.message.startsWith("Установлена ") || " заменена на " in game.message) {
+            selectedPart = null
+        }
+    }
     val check = game.check()
     val parts = if (filter == null) Catalog.parts else Catalog.byType(filter!!)
 
@@ -80,16 +85,12 @@ private fun WorkshopGame(game: GameState) {
         WorkshopScene(
             game = game,
             selectedPart = selectedPart,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+            modifier = Modifier.fillMaxWidth().weight(1f)
         )
         StatusLine(game, check, selectedPart)
         CategoryBar(filter) { filter = it }
         LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(84.dp),
+            modifier = Modifier.fillMaxWidth().height(84.dp),
             horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             items(parts) { part ->
@@ -115,21 +116,10 @@ private fun WorkshopGame(game: GameState) {
 
 @Composable
 private fun Hud(game: GameState) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "PC CREATOR WORKSHOP",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                "День ${game.day} · репутация ${game.reputation}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Text("PC CREATOR WORKSHOP", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+            Text("День ${game.day} · репутация ${game.reputation}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         }
         Column(horizontalAlignment = Alignment.End) {
             Text("${game.money} ₽", fontWeight = FontWeight.Bold)
@@ -146,26 +136,14 @@ private fun StatusLine(game: GameState, check: BuildCheck, selected: Part?) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 7.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    game.message,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (game.messageError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    "Сборка: ${check.score} очк · ${check.totalCost} ₽ · ${check.totalPower} Вт",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Text(game.message, style = MaterialTheme.typography.labelMedium, color = if (game.messageError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                Text("Сборка: ${check.score} очк · ${check.totalCost} ₽ · ${check.totalPower} Вт", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
-            if (selected != null) {
-                Text("▶ ${selected.type.label}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-            }
+            if (selected != null) Text("▶ ${selected.type.label}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
         }
     }
 }
@@ -173,19 +151,9 @@ private fun StatusLine(game: GameState, check: BuildCheck, selected: Part?) {
 @Composable
 private fun CategoryBar(selected: PartType?, onSelect: (PartType?) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        item {
-            FilterChip(
-                selected = selected == null,
-                onClick = { onSelect(null) },
-                label = { Text("Все") }
-            )
-        }
+        item { FilterChip(selected == null, { onSelect(null) }, label = { Text("Все") }) }
         items(PartType.entries) { type ->
-            FilterChip(
-                selected = selected == type,
-                onClick = { onSelect(if (selected == type) null else type) },
-                label = { Text(type.label) }
-            )
+            FilterChip(selected == type, { onSelect(if (selected == type) null else type) }, label = { Text(type.label) })
         }
     }
 }
@@ -198,30 +166,19 @@ private fun PartCard(part: Part, locked: Boolean, selected: Boolean, onClick: ()
         else -> MaterialTheme.colorScheme.surface
     }
     Card(
-        modifier = Modifier
-            .size(width = 154.dp, height = 78.dp)
-            .clickable(enabled = !locked, onClick = onClick),
+        modifier = Modifier.size(width = 154.dp, height = 78.dp).clickable(enabled = !locked, onClick = onClick),
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = background)
     ) {
         Column(modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp)) {
-            Text(
-                if (locked) "🔒 ${part.name}" else part.name,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-            )
+            Text(if (locked) "🔒 ${part.name}" else part.name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(3.dp))
-            Text(
-                if (locked) "реп. ${part.requiredReputation}" else "${part.price} ₽ · ${part.score} очк",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
-            )
+            Text(if (locked) "реп. ${part.requiredReputation}" else "${part.price} ₽ · ${part.score} очк", style = MaterialTheme.typography.labelSmall, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary)
             Text(
                 when (part.type) {
                     PartType.CPU -> "socket ${part.socket}"
                     PartType.MOTHERBOARD -> "${part.socket} · ${part.ramType}"
-                    PartType.RAM -> part.ramType ?: "memory"
+                    PartType.RAM -> part.ramType ?: "память"
                     PartType.PSU -> "${part.watt} Вт"
                     else -> part.type.label
                 },
@@ -234,24 +191,9 @@ private fun PartCard(part: Part, locked: Boolean, selected: Boolean, onClick: ()
 
 @Composable
 private fun Actions(game: GameState, check: BuildCheck) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(7.dp)
-    ) {
-        Button(
-            onClick = { game.assemble() },
-            enabled = game.readyPc == null && check.canAssemble,
-            modifier = Modifier.weight(1f)
-        ) { Text("POST / СОБРАТЬ") }
-        Button(
-            onClick = { game.sell() },
-            enabled = game.readyPc != null,
-            modifier = Modifier.weight(1f)
-        ) { Text("ПРОДАТЬ") }
-        OutlinedButton(
-            onClick = { game.scrap() },
-            enabled = game.readyPc != null,
-            modifier = Modifier.weight(0.72f)
-        ) { Text("РАЗОБРАТЬ") }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        Button(onClick = { game.assemble() }, enabled = game.readyPc == null && check.canAssemble, modifier = Modifier.weight(1f)) { Text("POST / СОБРАТЬ") }
+        Button(onClick = { game.sell() }, enabled = game.readyPc != null, modifier = Modifier.weight(1f)) { Text("ПРОДАТЬ") }
+        OutlinedButton(onClick = { game.scrap() }, enabled = game.readyPc != null, modifier = Modifier.weight(0.72f)) { Text("РАЗОБРАТЬ") }
     }
 }
