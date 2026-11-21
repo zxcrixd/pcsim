@@ -1,45 +1,39 @@
 # PC Creator Simulator
 
-Симулятор сборщика ПК на **Kotlin Multiplatform + Compose Multiplatform**.
-Один и тот же код собирается в **Android APK**, **Windows EXE** и **Linux binary**.
+2D-игра про сборку ПК на Kotlin Multiplatform + Compose Multiplatform. Работает на Android и Desktop; сборка Android APK, Windows EXE и Linux app-image выполняется GitHub Actions.
 
-## Геймплей
+## Игровой цикл
 
-- Выбор комплектующих по 6 категориям: CPU, материнская плата, ОЗУ, видеокарта, накопитель, блок питания.
-- Проверка совместимости: сокет CPU ↔ плата, DDR-тип памяти ↔ плата, мощность БП ≥ потребления.
-- Цикл «собрал → продал под заказ дня», прибыль, репутация и аренда −40 ₽/день.
-- Репутация открывает дорогие детали (RTX 4090, DDR5, i9-13900K).
+1. Выбери комплектующую в магазине внизу экрана.
+2. Нажми на соответствующий слот в открытом корпусе, чтобы установить её. Нажатие на уже установленную деталь без выбранной замены снимает её с частичным возвратом денег.
+3. Собери систему из CPU, материнской платы, ОЗУ, GPU, накопителя и БП. Корпус можно улучшать отдельно.
+4. Проверки POST учитывают сокет процессора, тип DDR и мощность блока питания.
+5. Выполни заказ дня, получи деньги и репутацию; дорогие компоненты открываются по мере прогресса. За каждый день списывается аренда.
 
-## Сборка
+В мастерской нарисованы стол, монитор, открытый корпус, PCB-трассы и отдельные посадочные места CPU/RAM/GPU/SSD/PSU. Это процедурная 2D-графика на Compose Canvas — внешние ассеты не нужны.
+
+## Запуск и сборка
+
+Открой проект в Android Studio/IntelliJ с Gradle 8.9 и JDK 17:
 
 ```bash
-gradle :composeApp:run                 # desktop-версия
-gradle :composeApp:assembleDebug       # APK -> composeApp/build/outputs/apk/debug/
-gradle :composeApp:createDistributable # EXE (Windows) / binary (Linux)
-gradle :composeApp:packageMsi          # MSI (Windows, нужен WiX)
-gradle :composeApp:packageDeb          # DEB (Linux)
+gradle :composeApp:run
+gradle :composeApp:assembleDebug
+gradle :composeApp:createDistributable
 ```
 
-CI использует `gradle/actions/setup-gradle@v4` с Gradle 8.9.
+## GitHub Actions
 
-## CI
+`.github/workflows/build.yml` запускает три сборки на push в `main`, pull request и вручную:
 
-`.github/workflows/build.yml` — три параллельные джобы:
+- `pcsim-android-apk` — debug APK;
+- `pcsim-windows-exe` — Windows app-image с EXE;
+- `pcsim-linux-binary` — Linux app-image.
 
-| Джоба | Артефакт |
-|-------|----------|
-| Android APK (`assembleDebug`) | `pcsim-android-apk` |
-| Windows EXE (`createDistributable`) | `pcsim-windows-exe` |
-| Linux binary (`createDistributable`) | `pcsim-linux-binary` |
-
-Пуш тега `v1.0.0` создаёт GitHub Release со всеми тремя файлами.
+Тег `v*` дополнительно создаёт GitHub Release.
 
 ## Стек
 
-Kotlin 2.0.21 · Compose Multiplatform 1.7.1 · AGP 8.5.2 · Gradle 8.9 · JDK 17
+Kotlin 2.0.21 · Compose Multiplatform 1.7.1 · Android Gradle Plugin 8.5.2 · Gradle 8.9 · JDK 17.
 
-## Godot-эксперимент
-
-В корне остались файлы Godot-прототипа (`project.godot`, `Main.tscn`, `scripts/`, `export_presets.cfg`).
-CI их **не собирает**: экспорт APK через `barichello/godot-ci:4.3` падал на конфигурации Android-пресета.
-Файлы оставлены как история; активная сборка — Kotlin.
+> Godot-прототип сохранён в корне как неактивный эксперимент; текущий проект и CI — Kotlin. Godot-файлы не участвуют в Gradle-сборке.
