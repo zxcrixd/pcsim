@@ -57,15 +57,17 @@ fun WorkshopScene(game: GameState, selectedPart: Part?, modifier: Modifier = Mod
         modifier = modifier.pointerInput(selectedPart, installed) {
             detectTapGestures { point ->
                 val slots = slotRects(Size(size.width.toFloat(), size.height.toFloat()))
-                val targetOrder = listOf(
+                val componentOrder = listOf(
                     PartType.CPU,
                     PartType.RAM,
                     PartType.GPU,
                     PartType.STORAGE,
-                    PartType.PSU,
-                    PartType.MOTHERBOARD
+                    PartType.PSU
                 )
-                val target = targetOrder.firstOrNull { slots.getValue(it).contains(point) }
+                val componentSlot = componentOrder.firstOrNull { slots.getValue(it).contains(point) }
+                val target = componentSlot ?: if (slots.getValue(PartType.MOTHERBOARD).contains(point)) {
+                    PartType.MOTHERBOARD
+                } else null
                 when {
                     target == null -> game.hint("Нажми на слот внутри корпуса")
                     selectedPart != null -> game.place(selectedPart, target)
@@ -88,54 +90,29 @@ fun WorkshopScene(game: GameState, selectedPart: Part?, modifier: Modifier = Mod
                 drawLine(Color(0x1839D9C5), Offset(0f, y), Offset(width, y), 1f)
             }
 
-            drawRoundRect(
-                Color(0xFF604332),
-                topLeft = Offset(width * 0.08f, height * 0.83f),
-                size = Size(width * 0.84f, height * 0.09f),
-                cornerRadius = CornerRadius(12f)
-            )
-            drawRoundRect(
-                Color(0xFF29364A),
-                topLeft = Offset(width * 0.055f, height * 0.22f),
-                size = Size(width * 0.18f, height * 0.34f),
-                cornerRadius = CornerRadius(12f)
-            )
-            drawRoundRect(
-                Color(0xFF10283C),
-                topLeft = Offset(width * 0.07f, height * 0.24f),
-                size = Size(width * 0.15f, height * 0.29f),
-                cornerRadius = CornerRadius(8f)
-            )
-            drawRoundRect(
-                Neon.copy(alpha = 0.23f),
-                topLeft = Offset(width * 0.07f, height * 0.24f),
-                size = Size(width * 0.15f, height * 0.29f),
-                cornerRadius = CornerRadius(8f),
-                style = Stroke(2f)
-            )
-            drawText(
-                textMeasurer,
-                "POST",
-                topLeft = Offset(width * 0.105f, height * 0.31f),
-                style = TextStyle(color = Neon, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            )
-            drawText(
-                textMeasurer,
-                "READY",
-                topLeft = Offset(width * 0.097f, height * 0.39f),
-                style = TextStyle(color = Color(0xFF8BA2BE), fontSize = 11.sp)
-            )
+            drawRoundRect(Color(0xFF604332), Offset(width * 0.08f, height * 0.83f), Size(width * 0.84f, height * 0.09f), CornerRadius(12f))
+            drawRoundRect(Color(0xFF29364A), Offset(width * 0.055f, height * 0.22f), Size(width * 0.18f, height * 0.34f), CornerRadius(12f))
+            drawRoundRect(Color(0xFF10283C), Offset(width * 0.07f, height * 0.24f), Size(width * 0.15f, height * 0.29f), CornerRadius(8f))
+            drawRoundRect(Neon.copy(alpha = 0.23f), Offset(width * 0.07f, height * 0.24f), Size(width * 0.15f, height * 0.29f), CornerRadius(8f), style = Stroke(2f))
+            drawText(textMeasurer, "POST", Offset(width * 0.105f, height * 0.31f), style = TextStyle(color = Neon, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+            drawText(textMeasurer, "READY", Offset(width * 0.097f, height * 0.39f), style = TextStyle(color = Color(0xFF8BA2BE), fontSize = 11.sp))
 
             val slots = slotRects(size)
             val caseRect = slots.getValue(PartType.CASE)
-            drawRoundRect(Color(0xFF111722), caseRect.topLeft, caseRect.size, CornerRadius(18f))
+            val casePart = installed[PartType.CASE]
+            val caseTint = if (casePart == null) Color(0xFF111722) else partColor(PartType.CASE, casePart.score).copy(alpha = 0.9f)
+            drawRoundRect(caseTint, caseRect.topLeft, caseRect.size, CornerRadius(18f))
             drawRoundRect(Color(0xFF202A38), caseRect.topLeft, caseRect.size, CornerRadius(18f), style = Stroke(5f))
             val board = slots.getValue(PartType.MOTHERBOARD)
-            drawRoundRect(BoardGreen, board.topLeft, board.size, CornerRadius(12f))
+            val boardColor = if (installed.containsKey(PartType.MOTHERBOARD)) BoardGreen else Color(0xFF17252C)
+            drawRoundRect(boardColor, board.topLeft, board.size, CornerRadius(12f))
             drawRoundRect(Color(0xFF33866B), board.topLeft, board.size, CornerRadius(12f), style = Stroke(2f))
             repeat(5) { index ->
                 val y = board.top + board.height * (0.18f + index * 0.13f)
                 drawLine(Color(0x6649C99A), Offset(board.left + 8f, y), Offset(board.right - 8f, y), 1f)
+            }
+            if (casePart != null) {
+                drawText(textMeasurer, casePart.name, Offset(caseRect.left + 5f, caseRect.bottom - 19f), style = TextStyle(color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold))
             }
 
             val displayOrder = listOf(PartType.CPU, PartType.RAM, PartType.GPU, PartType.STORAGE, PartType.PSU)
@@ -145,12 +122,12 @@ fun WorkshopScene(game: GameState, selectedPart: Part?, modifier: Modifier = Mod
                 if (part == null) {
                     drawRoundRect(Color(0x2226D9C5), rect.topLeft, rect.size, CornerRadius(7f))
                     drawRoundRect(Neon.copy(alpha = 0.65f), rect.topLeft, rect.size, CornerRadius(7f), style = Stroke(2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f, 5f))))
-                    drawText(textMeasurer, type.label.uppercase(), topLeft = Offset(rect.left + 4f, rect.top + 4f), style = TextStyle(color = Color(0xFFB7C8D8), fontSize = 9.sp, fontWeight = FontWeight.Bold))
+                    drawText(textMeasurer, type.label.uppercase(), Offset(rect.left + 4f, rect.top + 4f), style = TextStyle(color = Color(0xFFB7C8D8), fontSize = 9.sp, fontWeight = FontWeight.Bold))
                 } else {
                     val color = partColor(type, part.score)
                     drawRoundRect(color, rect.topLeft, rect.size, CornerRadius(7f))
                     drawRoundRect(Color.White.copy(alpha = 0.75f), rect.topLeft, rect.size, CornerRadius(7f), style = Stroke(1.5f))
-                    drawText(textMeasurer, part.name, topLeft = Offset(rect.left + 5f, rect.top + rect.height * 0.38f), style = TextStyle(color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold))
+                    drawText(textMeasurer, part.name, Offset(rect.left + 5f, rect.top + rect.height * 0.38f), style = TextStyle(color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold))
                     when (type) {
                         PartType.GPU -> {
                             drawCircle(Color(0xFF172033), rect.height * 0.32f, Offset(rect.left + rect.width * 0.32f, rect.center.y))
