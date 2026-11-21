@@ -4,9 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,7 +30,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.zxcrixd.pcsim.BuildCheck
 import com.zxcrixd.pcsim.GameState
@@ -53,6 +58,50 @@ private val WorkshopColors = darkColorScheme(
     onSurfaceVariant = Color(0xFFC1B7A8), error = Color(0xFFE27769)
 )
 
+private data class UiMetrics(
+    val outerPadding: Dp,
+    val gap: Dp,
+    val navWidth: Dp,
+    val navItemPadding: Dp,
+    val shopCardWidth: Dp,
+    val shopCardHeight: Dp,
+    val swatchHeight: Dp
+)
+
+private val LocalUiMetrics = compositionLocalOf {
+    UiMetrics(12.dp, 10.dp, 150.dp, 13.dp, 190.dp, 250.dp, 70.dp)
+}
+
+private fun metricsFor(width: Dp): UiMetrics = when {
+    width < 720.dp -> UiMetrics(
+        outerPadding = 6.dp,
+        gap = 5.dp,
+        navWidth = 112.dp,
+        navItemPadding = 8.dp,
+        shopCardWidth = 145.dp,
+        shopCardHeight = 190.dp,
+        swatchHeight = 52.dp
+    )
+    width < 1000.dp -> UiMetrics(
+        outerPadding = 9.dp,
+        gap = 7.dp,
+        navWidth = 130.dp,
+        navItemPadding = 10.dp,
+        shopCardWidth = 165.dp,
+        shopCardHeight = 220.dp,
+        swatchHeight = 62.dp
+    )
+    else -> UiMetrics(
+        outerPadding = 12.dp,
+        gap = 10.dp,
+        navWidth = 150.dp,
+        navItemPadding = 13.dp,
+        shopCardWidth = 190.dp,
+        shopCardHeight = 250.dp,
+        swatchHeight = 70.dp
+    )
+}
+
 private enum class Page(val title: String, val icon: String) {
     HOME("Главная", "⌂"), TASKS("Задания", "▤"), BUILD("Сборка ПК", "⚙"), SHOP("Магазин", "▦")
 }
@@ -60,30 +109,12 @@ private enum class Page(val title: String, val icon: String) {
 @Composable
 fun App() {
     val game = remember { GameState() }
-    var page by remember { mutableStateOf(Page.HOME) }
-    var selectedPart by remember { mutableStateOf<Part?>(null) }
-    MaterialTheme(colorScheme = WorkshopColors) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Header(game, page) { game.reset(); selectedPart = null; page = Page.HOME }
-                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.weight(1f).fillMaxSize()) {
-                        when (page) {
-                            Page.HOME -> HomePage(game) { page = it }
-                            Page.TASKS -> TasksPage(game) { task -> game.acceptTask(task); page = Page.BUILD }
-                            Page.BUILD -> BuildPage(game, selectedPart) { selectedPart = null }
-                            Page.SHOP -> ShopPage(game, selectedPart) { part ->
-                                if (part.type == PartType.CASE) {
-                                    game.install(part)
-                                    selectedPart = null
-                                } else {
-                                    selectedPart = part
-                                    page = Page.BUILD
-                                }
-                            }
-                        }
-                    }
-                    Navigation(page) { page = it }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val metrics = remember(maxWidth) { metricsFor(maxWidth) }
+        CompositionLocalProvider(LocalUiMetrics provides metrics) {
+            MaterialTheme(colorScheme = WorkshopColors) {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    WorkshopApp(game)
                 }
             }
         }
@@ -91,51 +122,83 @@ fun App() {
 }
 
 @Composable
-private fun Header(game: GameState, page: Page, onReset: () -> Unit) {
+private fun WorkshopApp(game: GameState) {
+    val ui = LocalUiMetrics.current
+    var page by remember { mutableStateOf(Page.HOME) }
+    var selectedPart by remember { mutableStateOf<Part?>(null) }
+
     Row(
-        Modifier.fillMaxWidth().background(Color(0xFF24231F), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically
+        Modifier.fillMaxSize().padding(ui.outerPadding),
+        horizontalArrangement = Arrangement.spacedBy(ui.gap)
     ) {
-        Column(Modifier.weight(1f)) {
-            Text("PC WORKSHOP", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-            Text("${page.title}  ·  День ${game.day}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+        Box(Modifier.weight(1f).fillMaxHeight()) {
+            when (page) {
+                Page.HOME -> HomePage(game) { page = it }
+                Page.TASKS -> TasksPage(game) { task -> game.acceptTask(task); page = Page.BUILD }
+                Page.BUILD -> BuildPage(game, selectedPart) { selectedPart = null }
+                Page.SHOP -> ShopPage(game, selectedPart) { part ->
+                    if (part.type == PartType.CASE) {
+                        game.install(part)
+                        selectedPart = null
+                    } else {
+                        selectedPart = part
+                        page = Page.BUILD
+                    }
+                }
+            }
         }
-        Column(horizontalAlignment = Alignment.End) {
-            Text("${game.money} ₽", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("Уровень ${game.sellerLevel}  ·  ★ ${game.rating.toString().take(3)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            LinearProgressIndicator(
-                progress = (game.sellerXp % 100) / 100f,
-                modifier = Modifier.width(150.dp).height(5.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = Color(0xFF4A4035)
-            )
-            Text("${game.sellerXp % 100}/100 XP", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        TextButton(onClick = onReset) { Text("Новая игра") }
+        Navigation(game, page) { page = it }
     }
 }
 
 @Composable
-private fun Navigation(current: Page, onNavigate: (Page) -> Unit) {
+private fun Navigation(game: GameState, current: Page, onNavigate: (Page) -> Unit) {
+    val ui = LocalUiMetrics.current
     Column(
-        Modifier.width(150.dp).background(Color(0xFF24231F), RoundedCornerShape(14.dp)).padding(8.dp),
+        Modifier.width(ui.navWidth).fillMaxHeight()
+            .background(Color(0xFF24231F), RoundedCornerShape(14.dp)).padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
-        Text("МЕНЮ", Modifier.padding(start = 10.dp, top = 8.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF302A21)),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("ПРОДАВЕЦ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Уровень ${game.sellerLevel}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text("★ ${game.rating.toString().take(3)}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                LinearProgressIndicator(
+                    progress = (game.sellerXp % 100) / 100f,
+                    Modifier.fillMaxWidth().height(4.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color(0xFF4A4035)
+                )
+                Text("${game.money} ₽", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        Text("МЕНЮ", Modifier.padding(start = 8.dp, top = 4.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Page.entries.forEach { page ->
             val active = current == page
             Row(
-                Modifier.fillMaxWidth().background(if (active) Color(0xFF5A4530) else Color.Transparent, RoundedCornerShape(10.dp))
-                    .clickable { onNavigate(page) }.padding(horizontal = 10.dp, vertical = 13.dp),
+                Modifier.fillMaxWidth()
+                    .background(if (active) Color(0xFF5A4530) else Color.Transparent, RoundedCornerShape(10.dp))
+                    .clickable { onNavigate(page) }
+                    .padding(horizontal = 8.dp, vertical = ui.navItemPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(page.icon, color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.width(9.dp))
-                Text(page.title, style = MaterialTheme.typography.labelMedium, color = if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    page.title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
+                )
             }
         }
         Spacer(Modifier.weight(1f))
-        Text("МАСТЕРСКАЯ\nPC Creator Simulator", Modifier.padding(10.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("МАСТЕРСКАЯ\nPC Creator", Modifier.padding(8.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -194,7 +257,7 @@ private fun TasksPage(game: GameState, onAccept: (Order) -> Unit) {
         Text("У каждого клиента свои требования, бюджет и бонус. Удачная сборка повышает рейтинг продавца.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             game.tasks.forEachIndexed { index, task ->
-                Card(Modifier.weight(1f).fillMaxSize(), colors = CardDefaults.cardColors(containerColor = if (task.title == game.order.title) Color(0xFF302A21) else MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
+                Card(Modifier.weight(1f).fillMaxHeight(), colors = CardDefaults.cardColors(containerColor = if (task.title == game.order.title) Color(0xFF302A21) else MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.fillMaxSize().padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(if (task.title == game.order.title) "АКТИВНЫЙ ЗАКАЗ" else "ЗАКАЗ КЛИЕНТА ${index + 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Text(task.client, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -244,6 +307,7 @@ private fun BuildPage(game: GameState, selectedPart: Part?, onPartPlaced: () -> 
 
 @Composable
 private fun ShopPage(game: GameState, selectedPart: Part?, onSelect: (Part) -> Unit) {
+    val ui = LocalUiMetrics.current
     var filter by remember { mutableStateOf<PartType?>(null) }
     val parts = if (filter == null) Catalog.parts else Catalog.byType(filter!!)
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -272,10 +336,11 @@ private fun ShopPage(game: GameState, selectedPart: Part?, onSelect: (Part) -> U
 
 @Composable
 private fun ShopPartCard(part: Part, locked: Boolean, selected: Boolean, onClick: () -> Unit) {
+    val ui = LocalUiMetrics.current
     val fill = if (selected) Color(0xFF5A4530) else MaterialTheme.colorScheme.surface
-    Card(Modifier.width(190.dp).fillMaxSize().clickable(enabled = !locked, onClick = onClick), colors = CardDefaults.cardColors(containerColor = fill), shape = RoundedCornerShape(14.dp)) {
+    Card(Modifier.width(ui.shopCardWidth).height(ui.shopCardHeight).clickable(enabled = !locked, onClick = onClick), colors = CardDefaults.cardColors(containerColor = fill), shape = RoundedCornerShape(14.dp)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            PartSwatch(part.type, Modifier.fillMaxWidth().height(70.dp))
+            PartSwatch(part.type, Modifier.fillMaxWidth().height(ui.swatchHeight))
             Text(if (locked) "🔒 ${part.name}" else part.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(if (locked) "Откроется на реп. ${part.requiredReputation}" else "${part.price} ₽", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Text("${part.score} очков производительности", style = MaterialTheme.typography.labelSmall)
